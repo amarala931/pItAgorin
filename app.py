@@ -1,7 +1,7 @@
 import streamlit as st
 from src.backend.knowledge_base import KnowledgeBase
 from src.ui.sidebar import render_sidebar
-from ui.main_panel import render_main_panel
+from src.ui.main_panel import render_main_panel
 
 # 1. Global Page Configuration
 # Sets the browser tab title, favicon, and layout mode.
