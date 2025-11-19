@@ -10,7 +10,8 @@ def render_sidebar(db_instance, logo_img=None):
     with st.sidebar:
         # --- LOGO ÁREA ---
         if logo_img:
-            st.image(logo_img, use_column_width=True)
+            # CAMBIO AQUÍ: use_column_width -> use_container_width
+            st.image(logo_img, use_container_width=True)
         else:
             st.title("pItAgorin")
             
