@@ -13,7 +13,7 @@ def load_assets():
     current_dir = os.path.dirname(os.path.abspath(__file__))
     
     # Buscamos en la carpeta assets vecina
-    logo_path = os.path.join(current_dir, "assets", "logo.jpg")
+    logo_path = os.path.join(current_dir, "assets", "logo.png")
 
     try:
         return Image.open(logo_path)

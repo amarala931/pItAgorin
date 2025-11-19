@@ -1,14 +1,20 @@
 import streamlit as st
 from src.backend.model_engine import execute_pipeline
 
-def render_main_panel(db_instance, config):
-    """
-    Renders the main workspace area with Advanced Prompt Engineering capabilities.
-    """
-    st.title("🐍 pItAgorin")
-    st.markdown("### AI Orchestrator & Local Knowledge Base")
+def render_main_panel(db_instance, config, logo_img=None):
+    
+    # Cabecera con columnas para poner logo pequeño y título
+    c1, c2 = st.columns([1, 5])
+    with c1:
+        if logo_img:
+            st.image(logo_img, width=80)
+        else:
+            st.write("🤖")
+    with c2:
+        st.title("pItAgorin")
+        st.caption("Orchestrating the Wisdom of AI")
 
-    # --- 1. Knowledge Ingestion Section (Preserved) ---
+    # --- Knowledge Ingestion Section ---
     with st.expander("📚 Feed Knowledge Base (Upload Data)", expanded=False):
         tab_manual, tab_upload = st.tabs(["✍️ Manual Text", "📁 Upload File"])
         content_to_save = ""
@@ -53,53 +59,25 @@ def render_main_panel(db_instance, config):
 
     st.divider()
 
-    # --- 2. WORKSPACE & PROMPT ENGINEERING ---
+    # --- WORKSPACE ---
     st.subheader("Workspace")
+    user_prompt = st.text_area("Enter your main instruction/prompt:", height=100)
 
-    # --- A. Main Task Input ---
-    user_prompt = st.text_area("Enter your main instruction/prompt:", height=100, placeholder="e.g., Summarize the quarterly financial report...")
-
-    # --- B. Advanced Prompt Configuration (New Section) ---
-    with st.expander("⚙️ Advanced Prompt Engineering (Context & Constraints)", expanded=False):
-        st.caption("Configure how the AI should think and respond.")
-        
+    # --- Advanced Prompt Configuration ---
+    with st.expander("⚙️ Advanced Prompt Engineering", expanded=False):
         c1, c2 = st.columns(2)
-        
         with c1:
-            # Rol / Persona
-            role = st.text_input("🎭 Role / Persona", placeholder="e.g., Senior Data Scientist, Empathetic Teacher")
-            
-            # Audiencia Objetivo
-            audience = st.text_input("🎯 Target Audience", placeholder="e.g., Executives, 5-year old, Developers")
-            
-            # Tono y Estilo
-            tone_options = ["Default", "Formal & Professional", "Concise & Direct", "Creative & Enthusiastic", "Socratic (Ask Questions)", "ELI5 (Simple)"]
-            tone = st.selectbox("🎨 Tone & Style", tone_options)
-
+            role = st.text_input("🎭 Role / Persona")
+            audience = st.text_input("🎯 Target Audience")
+            tone = st.selectbox("🎨 Tone & Style", ["Default", "Formal", "Concise", "Creative", "Socratic", "ELI5"])
         with c2:
-            # Formato de Salida
-            format_options = ["Text (Default)", "Markdown Table", "Bullet Points", "JSON", "Python Code", "Executive Summary", "Step-by-Step Guide"]
-            output_format = st.selectbox("📝 Output Format", format_options)
-            
-            # Granular Structure (Optional override)
-            structure_override = st.text_input("Or define custom structure:", placeholder="e.g., 1. Title, 2. Analysis, 3. Conclusion")
+            output_format = st.selectbox("📝 Output Format", ["Text", "Markdown Table", "Bullet Points", "JSON", "Code"])
+            structure_override = st.text_input("Custom structure:")
+            active_constraints = st.multiselect("🚫 Negative Constraints", ["No preambles", "No apologies", "No passive voice", "No jargon"])
+            negative_context = st.text_input("Specific Avoidance")
 
-            # Restricciones / Contexto Negativo
-            constraints_options = [
-                "No preambles ('Here is the...')", 
-                "No AI apologies ('As an AI...')", 
-                "No passive voice", 
-                "No jargon"
-            ]
-            active_constraints = st.multiselect("🚫 Negative Constraints", constraints_options)
-            
-            # Specific Negative Context
-            negative_context = st.text_input("Specific Avoidance", placeholder="e.g., Do not mention competitors, Don't use Markdown")
-
-    # --- 3. Execution Logic ---
+    # --- Execution Logic ---
     if st.button("🚀 Execute Pipeline", type="primary"):
-        
-        # Validation
         if not config.get("pipeline_steps"):
             st.error("Please configure the model pipeline in the sidebar first.")
             return
@@ -107,72 +85,43 @@ def render_main_panel(db_instance, config):
             st.warning("Main prompt is required.")
             return
 
-        # --- PROMPT ASSEMBLY (The "Mega-Prompt" Builder) ---
-        # We construct a structured prompt invisible to the user but seen by the AI
+        # Mega-Prompt Construction
         system_instruction = []
-        
         if role: system_instruction.append(f"ROLE: Act as a {role}.")
         if audience: system_instruction.append(f"AUDIENCE: Adapt response for {audience}.")
-        
         if tone and tone != "Default": system_instruction.append(f"TONE: {tone}.")
         
-        # Format Logic
         final_format = structure_override if structure_override else output_format
-        if final_format != "Text (Default)":
-             system_instruction.append(f"FORMAT: Provide output as {final_format}.")
-
-        # Constraints Logic
+        if final_format != "Text": system_instruction.append(f"FORMAT: Provide output as {final_format}.")
+        
         all_constraints = active_constraints.copy()
         if negative_context: all_constraints.append(negative_context)
-        if all_constraints:
-            system_instruction.append(f"CONSTRAINTS (DO NOT DO): {', '.join(all_constraints)}.")
+        if all_constraints: system_instruction.append(f"CONSTRAINTS (AVOID): {', '.join(all_constraints)}.")
 
-        # Join all meta-instructions
         meta_prompt = "\n".join(system_instruction)
-
-        # --- RAG Retrieval ---
         temas_seleccionados = config.get("rag_topics", []) 
         retrieved_context = db_instance.query_db(user_prompt, temas_seleccionados)
         
-        # --- Final Input Construction ---
-        # 1. Meta-Instructions (Role, Tone, etc.)
-        # 2. Context (RAG)
-        # 3. The User's Actual Question
-        
         full_input_package = ""
-        
-        if meta_prompt:
-            full_input_package += f"--- SYSTEM INSTRUCTIONS ---\n{meta_prompt}\n\n"
-            
+        if meta_prompt: full_input_package += f"--- SYSTEM INSTRUCTIONS ---\n{meta_prompt}\n\n"
         if retrieved_context:
-            st.info(f"💡 **RAG Active:** Context found in {len(temas_seleccionados)} topics.")
-            with st.expander("View Retrieved Context"):
-                st.caption(retrieved_context[:800] + "...")
+            st.info(f"💡 RAG Active: {len(temas_seleccionados)} topics.")
             full_input_package += f"--- KNOWLEDGE BASE CONTEXT ---\n{retrieved_context}\n\n"
-            
         full_input_package += f"--- TASK ---\n{user_prompt}"
 
-        # --- Execution Loop ---
         current_input = full_input_package
         
         with st.status("Processing Pipeline...", expanded=True) as status:
             pipeline_steps = config.get("pipeline_steps", [])
-            
             for i, step in enumerate(pipeline_steps):
                 status.write(f"▶️ **Step {i+1}:** Running {step['model_id']}...")
                 try:
-                    # If it's the first step, use the full engineered prompt.
-                    # For subsequent steps (e.g., translation), we might just want the text, 
-                    # but carrying context is usually safer in generic pipelines.
                     output = execute_pipeline(step, current_input)
-                    
                     st.markdown(f"**Output Step {i+1} ({step['task']}):**")
                     st.success(output)
-                    
                     current_input = output
                 except Exception as e:
                     st.error(f"Error in step {i+1}: {str(e)}")
                     status.update(label="Execution Failed", state="error")
                     return
-            
-            status.update(label="Pipeline Completed Successfully!", state="complete", expanded=False)
+            status.update(label="Pipeline Completed!", state="complete", expanded=False)
