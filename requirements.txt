@@ -1,0 +1,19 @@
+# Graphical User Interface (GUI)
+streamlit>=1.28.0
+
+# AI Core and Deep Learning
+torch>=2.0.0
+transformers>=4.35.0
+
+# Vector Database (RAG - Retrieval-Augmented Generation)
+chromadb>=0.4.15
+sentence-transformers>=2.2.2
+
+# Image Processing (For Vision Models)
+pillow>=10.0.0
+
+# Critical dependencies for specific Hugging Face models
+accelerate>=0.24.0      # Model loading optimization
+sentencepiece>=0.1.99   # Required for the Translator (Helsinki-NLP)
+sacremoses>=0.0.53      # Tokenizer required for some translation models
+einops>=0.7.0           # Required for modern vision architectures
