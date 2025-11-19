@@ -82,7 +82,7 @@ def render_main_panel(db_instance, config):
     user_prompt = st.text_area("Enter your prompt:", height=100)
     
     if st.button("🚀 Execute Pipeline", type="primary"):
-        if not config["pasos"]:
+        if not config["pipeline_steps"]:
             st.error("Please add at least one model in the sidebar configuration.")
             return
 
@@ -90,7 +90,7 @@ def render_main_panel(db_instance, config):
             st.warning("Please write a prompt first.")
             return
 
-        temas_seleccionados = config.get("temas_rag", []) 
+        temas_seleccionados = config.get("rag_topics", []) 
         
         retrieved_context = db_instance.query_db(user_prompt, temas_seleccionados)
         current_input = user_prompt
@@ -103,7 +103,7 @@ def render_main_panel(db_instance, config):
             current_input = f"Context:\n{retrieved_context}\n\nQuestion/Instruction: {user_prompt}"
 
         with st.status("Processing Pipeline...", expanded=True) as status:
-            pipeline_steps = config.get("pasos", [])
+            pipeline_steps = config.get("pipeline_steps", [])
             
             for i, step in enumerate(pipeline_steps):
                 status.write(f"▶️ **Step {i+1}:** Running {step['model_id']}...")
