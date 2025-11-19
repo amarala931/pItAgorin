@@ -1,7 +1,10 @@
 import streamlit as st
 import time
+import json
+from config.settings import DATABASES
 from src.backend.model_engine import execute_pipeline
 from src.backend.parsers import parse_uploaded_file
+from src.backend.db_connectors import fetch_database_data
 
 def render_main_panel(db_instance, config, logo_img=None):
     
@@ -25,7 +28,7 @@ def render_main_panel(db_instance, config, logo_img=None):
 # --- Knowledge Ingestion Section ---
     with st.expander("📚 Feed Knowledge Base (Upload Data)", expanded=False):
         
-        tab_manual, tab_upload = st.tabs(["✍️ Manual Text", "📁 Upload File"])
+        tab_manual, tab_upload, tab_db = st.tabs(["✍️ Manual Text", "📁 Upload File", "🗄️ Databases"])
         content_to_save = ""
         source_name = "manual"
         
@@ -33,11 +36,51 @@ def render_main_panel(db_instance, config, logo_img=None):
             manual_text = st.text_area("Paste text content here:", height=150)
             
         with tab_upload:
-            # AÑADIDAS EXTENSIONES: json, yaml, yml, xml
             uploaded_file = st.file_uploader(
                 "Upload a document", 
                 type=["txt", "md", "pdf", "docx", "csv", "json", "yaml", "yml", "xml"]
             )
+        with tab_db:
+            if not DATABASES:
+                st.warning("No databases configured in settings.py")
+            else:
+                col_conn, col_params = st.columns([1, 2])
+                
+                with col_conn:
+                    selected_db_name = st.selectbox("Select Connection", list(DATABASES.keys()))
+                    db_config = DATABASES[selected_db_name]
+                    st.caption(f"Type: **{db_config['type'].upper()}**")
+
+                query_params = {}
+                
+                with col_params:
+                    if db_config['type'] == 'sql':
+                        sql_query = st.text_area("SQL Query", "SELECT * FROM users LIMIT 5", height=100)
+                        query_params["query"] = sql_query
+                        source_name = f"SQL: {selected_db_name}"
+                        
+                    elif db_config['type'] == 'mongo':
+                        c1, c2 = st.columns(2)
+                        coll = c1.text_input("Collection Name")
+                        limit = c2.number_input("Limit rows", 1, 100, 10)
+                        filt = st.text_area("Filter (JSON)", "{}", height=68)
+                        
+                        query_params = {
+                            "collection": coll,
+                            "limit": limit,
+                            "filter_json": filt,
+                            # Opcional: permitir sobreescribir la DB
+                            "db_name": db_config.get("default_db") 
+                        }
+                        source_name = f"Mongo: {selected_db_name}.{coll}"
+                
+                # Botón de vista previa para verificar conexión
+                if st.button("Test Connection & Preview Data"):
+                    try:
+                        preview = fetch_database_data(db_config, query_params)
+                        st.code(preview[:500] + "..." if len(preview) > 500 else preview, language="json")
+                    except Exception as e:
+                        st.error(f"Connection failed: {e}")
 
         # --- Lógica Unificada ---
         st.write("---")
@@ -76,26 +119,47 @@ def render_main_panel(db_instance, config, logo_img=None):
 
         # --- Saving Logic ---
         if save_btn:
-            if uploaded_file:
-                try:
-                    # CAMBIO: Usamos la función del backend en lugar de leer a mano
+            # Priority 1: Database (Si estamos en esa pestaña activa sería ideal, 
+            # pero aquí verificamos si hay configuración de DB lista para ejecutar)
+            # Para simplificar, verificaremos flag o si venimos de un estado específico.
+            # OJO: Como tenemos 3 fuentes, lo mejor es usar content_to_save como variable única.
+            
+            # LÓGICA DE PRIORIDAD ACTUALIZADA:
+            try:
+                # CASO 1: Archivo
+                if uploaded_file:
                     content_to_save = parse_uploaded_file(uploaded_file)
                     source_name = uploaded_file.name
-                except Exception as e:
-                    st.error(f"Error: {e}")
-            elif manual_text.strip():
-                content_to_save = manual_text
-                source_name = "manual_input"
+                
+                # CASO 2: SQL/Mongo (Verificamos si estamos intentando guardar desde DB)
+                # Una forma robusta es comprobar si los inputs de DB tienen datos y no hay archivo
+                elif selected_db_name and db_config:
+                    # Ejecutamos la consulta REAL para guardar
+                    # Nota: Esto es una simplificación. En una UI compleja usaríamos st.session_state para saber qué tab está activo.
+                    # Asumimos que si no hay archivo ni texto manual, el usuario quiere la DB.
+                    if not manual_text.strip() and not uploaded_file:
+                         with st.spinner("Fetching data from DB..."):
+                            content_to_save = fetch_database_data(db_config, query_params)
+                
+                # CASO 3: Texto Manual
+                elif manual_text.strip():
+                    content_to_save = manual_text
+                    source_name = "manual_input"
 
+            except Exception as e:
+                st.error(f"Error importing data: {e}")
+                content_to_save = None
+
+            # Guardado final
             if content_to_save:
                 db_instance.add_document(content_to_save, topic_tag, source_name)
-                st.success(f"✅ Added to **{topic_tag}**")
-                
+                st.success(f"✅ Added to **{topic_tag}** from **{source_name}**")
                 st.session_state["trigger_input_reset"] = True
                 time.sleep(0.5)
                 st.rerun()
             else:
-                st.warning("⚠️ Provide text first.")
+                if not content_to_save:
+                    st.warning("⚠️ No content generated. Check your inputs or query results.")
 
     st.divider()
 

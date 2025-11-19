@@ -6,6 +6,8 @@ services:
     container_name: pitagorin_core
     ports:
       - "8501:8501"
+    env_file:
+      - .env
     volumes:
       # 1. Data Persistence (RAG)
       # Maps your local './data' folder to '/app/data' inside the container.

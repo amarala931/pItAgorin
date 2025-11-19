@@ -24,3 +24,11 @@ python-docx>=1.1.0   # Word reader
 pandas>=2.1.0        # Data manipulation and CSV reader
 openpyxl>=3.1.0      # Excel reader
 PyYAML>=6.0          # YAML file support
+
+# Database connectors
+SQLAlchemy>=2.0.0    # general SQL database toolkit
+pymongo>=4.5.0       # MongoDB connector
+python-dotenv>=1.0.0  # for loading environment variables from .env files
+# specific database drivers (uncomment as needed)
+# pymysql            # uncomment if using MySQL
+# psycopg2-binary    # uncomment if using PostgreSQL
