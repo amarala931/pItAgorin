@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: pitagorin_core
+    ports:
+      - "8501:8501"
+    volumes:
+      # 1. Data Persistence (RAG)
+      # Maps your local './data' folder to '/app/data' inside the container.
+      # This ensures your Knowledge Base survives container restarts.
+      - ./data:/app/data
+
+      # 2. Model Caching (Hugging Face)
+      # Maps a Docker managed volume to the root cache.
+      # This prevents re-downloading GBs of models every time you run the app.
+      - hf_cache:/root/.cache/huggingface
+
+    environment:
+      # Explicitly tell Transformers library where to look for models
+      - TRANSFORMERS_CACHE=/root/.cache/huggingface
+      # Suppress warnings about parallelism in tokenizers
+      - TOKENIZERS_PARALLELISM=false
+
+    # --- GPU Support (Optional) ---
+    # If you have an NVIDIA GPU and the NVIDIA Container Toolkit installed,
+    # uncomment the following 'deploy' section to accelerate inference.
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+# Define the named volume for the model cache
+volumes:
+  hf_cache:
