@@ -46,6 +46,39 @@ MODEL_CATALOG = {
     }
 }
 ```
+Aquí tienes el archivo README.md completamente actualizado.
+
+He añadido dos nuevas secciones importantes:
+
+🔌 Database Configuration: Explica cómo crear el archivo .env para conectar bases de datos SQL y Mongo.
+
+⚡ GPU Acceleration: Explica cómo configurar Docker para usar tu tarjeta gráfica NVIDIA.
+
+Markdown
+
+# 🐍 pItAgorin
+
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
+[![Python](https://img.shields.io/badge/Python-3.10-yellow)](https://www.python.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-blue)](https://www.docker.com/)
+[![GPU Support](https://img.shields.io/badge/NVIDIA-CUDA-green)](https://developer.nvidia.com/cuda-zone)
+
+**pItAgorin** is a modular AI orchestration platform designed to execute Hugging Face models sequentially while leveraging a **Local Knowledge Base (RAG)**.
+
+It allows users to build dynamic pipelines (e.g., *Summarization -> Translation*) and augment prompts with private data stored locally in a vector database or fetched dynamically from **SQL/NoSQL databases**, all through a user-friendly **Streamlit** interface.
+
+> **License Warning:** This project is released under the **GNU General Public License v3.0**. You are free to copy, distribute, and modify the software as long as you track changes/dates in source files and keep modifications under GPLv3.
+
+---
+
+## ✨ Key Features
+
+* **🧠 Local RAG (Retrieval-Augmented Generation):** Store and retrieve information from a local **ChromaDB** vector store.
+* **🗄️ Universal Data Ingestion:** Import data from Text, PDF, Word, CSV, JSON, XML, **SQL Databases** (Postgres, MySQL), and **MongoDB**.
+* **⛓️ Sequential Model Chaining:** Connect multiple Hugging Face models. The output of *Model A* automatically becomes the input for *Model B*.
+* **🐳 Fully Dockerized:** Deployed via Docker Compose with volume persistence.
+* **⚡ GPU Ready:** Optimized to use NVIDIA GPUs via Docker for faster inference.
+* **🎨 Cyberpunk UI:** A sleek, dark-themed interface optimized for prompt engineering.
 
 -----
 
@@ -62,23 +95,59 @@ pItAgorin/
 ├── .gitignore               # 🙈 Git Ignore Rules
 │
 ├── config/                  # ⚙️ Configuration
-│   ├── __init__.py
 │   └── settings.py          # Global Settings & Model Catalog
 │
 ├── src/                     # 🧠 Source Code
-│   ├── __init__.py
 │   ├── backend/             # Backend Logic
-│   │   ├── __init__.py
+│   │   ├── db_connectors.py     # SQL/Mongo Connectors
+│   │   ├── parsers.py           # File Parsers (PDF, JSON, etc.)
 │   │   ├── knowledge_base.py    # ChromaDB Manager (RAG Logic)
 │   │   └── model_engine.py      # Hugging Face Pipeline Engine
 │   │
 │   └── ui/                  # Frontend (Streamlit)
-│       ├── __init__.py
+│       ├── assets/              # Images & Logos
+│       ├── layout.py            # UI Orchestrator
 │       ├── sidebar.py           # Sidebar Configuration Components
 │       └── main_panel.py        # Main Workspace & Chat Components
 │
 └── data/                    # 💾 Persistent Data (Ignored by Git)
     └── chroma_store/        # Local Vector Database Storage
+```
+
+---
+
+## 🤖 Available Models
+
+By default, **pItAgorin** comes pre-configured with the following optimized models. You can add more in `config/settings.py`.
+
+| Name | Task | Model ID (Hugging Face) | Description |
+| :--- | :--- | :--- | :--- |
+| **Assistant** | `text2text-generation` | `google/flan-t5-base` | A versatile model good for answering questions. |
+| **Translator** | `translation_en_to_es` | `Helsinki-NLP/opus-mt-en-es` | Specialized model for translating English to Spanish. |
+| **Summarizer** | `summarization` | `sshleifer/distilbart-cnn-12-6` | Creates concise summaries from long texts. |
+
+---
+
+## 🔌 Database Configuration (SQL & Mongo)
+
+To connect **pItAgorin** to your external databases, do not modify the code. Instead, create a **`.env`** file in the project root and define your credentials there.
+
+1.  Create a file named `.env` in the root folder.
+2.  Add your connection details following this template:
+
+```ini
+# .env file
+
+# --- SQL Database Configuration (MySQL, PostgreSQL, etc.) ---
+DB_SQL_HOST=localhost
+DB_SQL_PORT=5432
+DB_SQL_USER=admin
+DB_SQL_PASS=your_secure_password
+DB_SQL_NAME=production_db
+
+# --- MongoDB Configuration ---
+DB_MONGO_URI=mongodb://user:pass@mongo-server:27017/
+DB_MONGO_DEFAULT_DB=analytics_db
 ```
 
 -----
@@ -129,23 +198,48 @@ If you prefer running it directly on your host machine (Python 3.10+ required):
 
 ## 📖 Usage Guide
 
-### 1\. Feeding the Knowledge Base (RAG)
+### 1. Feeding the Knowledge Base (RAG)
+**pItAgorin** allows you to ingest knowledge from three different sources via the main panel:
 
-1.  Open the **"📚 Feed Knowledge Base"** expander in the main panel.
-2.  Paste text or upload a `.txt` file.
-3.  Assign a **Topic/Tag** (e.g., "Finance", "History").
-4.  Click **Save to DB**.
+* **✍️ Manual Text:** Paste raw text directly.
+* **📁 Upload File:** Supports rich documents and structured data.
+    * *Documents:* `.pdf`, `.docx`, `.txt`, `.md`
+    * *Data:* `.csv`, `.json`, `.yaml`, `.xml` (Automatically formatted for LLM readability).
+* **🗄️ Databases:** Select a pre-configured SQL or NoSQL connection, write your query (e.g., `SELECT * FROM users`), and preview the data before ingesting it.
 
-### 2\. Configuring the Pipeline
+**Tagging your Data:**
+Use the **Unified Input Field**:
+* **Type** to create a new topic tag.
+* **Click a "Pill"** below the input to quickly select an existing topic.
 
-1.  Go to the **Sidebar** (left panel).
-2.  **Context:** Select the topics you want the AI to consider for this query.
-3.  **Model Pipeline:** Select a model from the dropdown and click **"➕ Add Step"**.
+Click **💾 Save** to vectorize and store the content in ChromaDB.
 
-### 3\. Execution
+### 2. Configuring the Pipeline (Sidebar)
+1.  **RAG Context:** Select the specific **Topics** you want the AI to access for this session (e.g., select "Finance" to ignore "HR" documents).
+2.  **Build the Chain:**
+    * Choose a model from the dropdown (e.g., `Assistant`).
+    * Click **"➕ Add Step"**.
+    * Repeat to chain models (e.g., *Summarizer* -> *Translator*).
 
-1.  Type your prompt in the main workspace.
+### 3. Advanced Prompt Engineering (The "Cockpit")
+Before executing, expand the **"⚙️ Advanced Prompt Engineering"** section in the main workspace to supercharge your prompt:
+
+* **🎭 Role / Persona:** Define who the AI is (e.g., *"Senior Data Scientist"*).
+* **🎯 Target Audience:** Define who the answer is for (e.g., *"Executive Board"*).
+* **🎨 Tone & Style:** Choose a vibe (e.g., *Socratic, Formal, ELI5*).
+* **📝 Output Format:** Force specific structures (e.g., *Markdown Table, JSON, Python Code*).
+* **🚫 Constraints:** Set negative rules (e.g., *"No preambles", "No passive voice"*).
+
+**pItAgorin** will automatically assemble these parameters into a robust "System Prompt".
+
+### 4. Execution
+1.  Type your main instruction in the **Workspace** text area.
 2.  Click **"🚀 Execute Pipeline"**.
+
+The system will:
+1.  **Retrieve** relevant context from the Local DB (RAG).
+2.  **Construct** the Mega-Prompt (Context + System Instructions + User Task).
+3.  **Execute** the defined Model Pipeline sequentially.
 
 -----
 👥 Contributors
