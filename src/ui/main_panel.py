@@ -33,10 +33,10 @@ def render_main_panel(db_instance, config, logo_img=None):
             manual_text = st.text_area("Paste text content here:", height=150)
             
         with tab_upload:
-            # CAMBIO: Añadimos pdf, docx y csv a la lista permitida
+            # AÑADIDAS EXTENSIONES: json, yaml, yml, xml
             uploaded_file = st.file_uploader(
                 "Upload a document", 
-                type=["txt", "md", "pdf", "docx", "csv"]
+                type=["txt", "md", "pdf", "docx", "csv", "json", "yaml", "yml", "xml"]
             )
 
         # --- Lógica Unificada ---

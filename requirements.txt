@@ -23,3 +23,4 @@ pypdf>=3.17.0        # PDF reader
 python-docx>=1.1.0   # Word reader
 pandas>=2.1.0        # Data manipulation and CSV reader
 openpyxl>=3.1.0      # Excel reader
+PyYAML>=6.0          # YAML file support
