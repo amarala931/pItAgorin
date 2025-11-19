@@ -4,23 +4,15 @@ from src.backend.model_engine import execute_pipeline
 
 def render_main_panel(db_instance, config, logo_img=None):
     
-    # --- 0. LÓGICA DE RESET (SOLUCIÓN AL ERROR) ---
-    # Verificamos si hay una petición de limpieza pendiente ANTES de pintar nada
+    # --- 0. reset logic ---
     if st.session_state.get("trigger_input_reset"):
         st.session_state["topic_pill_selection"] = None
         st.session_state["topic_input_field"] = "General"
-        st.session_state["trigger_input_reset"] = False # Apagamos la bandera
+        st.session_state["trigger_input_reset"] = False
 
-    # --- Header ---
-    c1, c2 = st.columns([1, 5])
-    with c1:
-        if logo_img:
-            st.image(logo_img, width=80)
-        else:
-            st.write("🤖")
-    with c2:
-        st.title("pItAgorin")
-        st.caption("Orchestrating the Wisdom of AI")
+    # --- HEADER ---
+    st.title("pItAgorin")
+    st.caption("Orchestrating the Wisdom of AI")
 
     # --- Knowledge Ingestion Section ---
     with st.expander("📚 Feed Knowledge Base (Upload Data)", expanded=False):
@@ -35,7 +27,7 @@ def render_main_panel(db_instance, config, logo_img=None):
         with tab_upload:
             uploaded_file = st.file_uploader("Upload a document", type=["txt", "md"])
 
-        # --- LÓGICA DE SELECCIÓN UNIFICADA ---
+        # --- Unified logic ---
         st.write("---")
         
         def _update_text_from_pill():
@@ -84,8 +76,6 @@ def render_main_panel(db_instance, config, logo_img=None):
                 db_instance.add_document(content_to_save, topic_tag, source_name)
                 st.success(f"✅ Added to **{topic_tag}**")
                 
-                # --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
-                # En lugar de limpiar directamente, activamos la bandera y recargamos
                 st.session_state["trigger_input_reset"] = True
                 time.sleep(0.5)
                 st.rerun()
