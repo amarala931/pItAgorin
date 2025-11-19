@@ -45,7 +45,7 @@ MODEL_CATALOG = {
         "model_id": "gpt2" 
     }
 }
-
+```
 
 -----
 
@@ -151,7 +151,7 @@ If you prefer running it directly on your host machine (Python 3.10+ required):
 👥 Contributors
 We would like to thank the following people for their contributions to the project:
 
-* Alberto Márquez Alarcón (@amarala931)
+* Alberto Márquez Alarcón  [@amarala931](https://github.com/amarala931)
 
 -----
 
