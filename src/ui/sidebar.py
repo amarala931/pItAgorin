@@ -10,8 +10,9 @@ def render_sidebar(db_instance, logo_img=None):
     with st.sidebar:
         # --- LOGO ÁREA ---
         if logo_img:
-            # CAMBIO AQUÍ: use_column_width -> use_container_width
-            st.image(logo_img, use_container_width=True)
+            # CORRECCIÓN: Reemplazamos use_container_width=True por width="stretch"
+            # tal como indica la advertencia de Streamlit.
+            st.image(logo_img, width="stretch")
         else:
             st.title("pItAgorin")
             
