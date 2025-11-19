@@ -1,20 +1,28 @@
 import streamlit as st
 import time
 from src.backend.model_engine import execute_pipeline
+from src.backend.parsers import parse_uploaded_file
 
 def render_main_panel(db_instance, config, logo_img=None):
     
-    # --- 0. reset logic ---
+    # --- 0. LÓGICA DE RESET ---
     if st.session_state.get("trigger_input_reset"):
         st.session_state["topic_pill_selection"] = None
         st.session_state["topic_input_field"] = "General"
         st.session_state["trigger_input_reset"] = False
+
+    # --- 1. INICIALIZACIÓN DE ESTADO (CORRECCIÓN DEL ERROR) ---
+    # Si la variable no existe en memoria, la creamos con el valor por defecto.
+    # Esto reemplaza el uso de value="General" dentro del widget.
+    if "topic_input_field" not in st.session_state:
+        st.session_state["topic_input_field"] = "General"
 
     # --- HEADER ---
     st.title("pItAgorin")
     st.caption("Orchestrating the Wisdom of AI")
 
     # --- Knowledge Ingestion Section ---
+# --- Knowledge Ingestion Section ---
     with st.expander("📚 Feed Knowledge Base (Upload Data)", expanded=False):
         
         tab_manual, tab_upload = st.tabs(["✍️ Manual Text", "📁 Upload File"])
@@ -25,21 +33,27 @@ def render_main_panel(db_instance, config, logo_img=None):
             manual_text = st.text_area("Paste text content here:", height=150)
             
         with tab_upload:
-            uploaded_file = st.file_uploader("Upload a document", type=["txt", "md"])
+            # CAMBIO: Añadimos pdf, docx y csv a la lista permitida
+            uploaded_file = st.file_uploader(
+                "Upload a document", 
+                type=["txt", "md", "pdf", "docx", "csv"]
+            )
 
-        # --- Unified logic ---
+        # --- Lógica Unificada ---
         st.write("---")
         
         def _update_text_from_pill():
+            # Callback: Pasa el valor de la píldora al input de texto
             if st.session_state.get("topic_pill_selection"):
                 st.session_state["topic_input_field"] = st.session_state["topic_pill_selection"]
 
         col_input, col_btn = st.columns([4, 1])
         
         with col_input:
+            # CORRECCIÓN AQUÍ: Eliminado parameter 'value="General"'
+            # Ahora el widget se alimenta puramente de key="topic_input_field"
             topic_tag = st.text_input(
                 "Topic / Tag", 
-                value="General", 
                 key="topic_input_field",
                 placeholder="Type new or select below..."
             )
@@ -64,7 +78,8 @@ def render_main_panel(db_instance, config, logo_img=None):
         if save_btn:
             if uploaded_file:
                 try:
-                    content_to_save = uploaded_file.getvalue().decode("utf-8")
+                    # CAMBIO: Usamos la función del backend en lugar de leer a mano
+                    content_to_save = parse_uploaded_file(uploaded_file)
                     source_name = uploaded_file.name
                 except Exception as e:
                     st.error(f"Error: {e}")

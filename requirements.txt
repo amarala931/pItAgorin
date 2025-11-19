@@ -1,5 +1,5 @@
 # Graphical User Interface (GUI)
-streamlit>=1.28.0
+streamlit>=1.40.0
 
 # AI Core and Deep Learning
 torch>=2.0.0
@@ -17,3 +17,9 @@ accelerate>=0.24.0      # Model loading optimization
 sentencepiece>=0.1.99   # Required for the Translator (Helsinki-NLP)
 sacremoses>=0.0.53      # Tokenizer required for some translation models
 einops>=0.7.0           # Required for modern vision architectures
+
+# Document Readers
+pypdf>=3.17.0        # PDF reader
+python-docx>=1.1.0   # Word reader
+pandas>=2.1.0        # Data manipulation and CSV reader
+openpyxl>=3.1.0      # Excel reader
