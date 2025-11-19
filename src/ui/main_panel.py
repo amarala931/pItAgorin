@@ -1,9 +1,17 @@
 import streamlit as st
+import time
 from src.backend.model_engine import execute_pipeline
 
 def render_main_panel(db_instance, config, logo_img=None):
     
-    # Cabecera con columnas para poner logo pequeño y título
+    # --- 0. LÓGICA DE RESET (SOLUCIÓN AL ERROR) ---
+    # Verificamos si hay una petición de limpieza pendiente ANTES de pintar nada
+    if st.session_state.get("trigger_input_reset"):
+        st.session_state["topic_pill_selection"] = None
+        st.session_state["topic_input_field"] = "General"
+        st.session_state["trigger_input_reset"] = False # Apagamos la bandera
+
+    # --- Header ---
     c1, c2 = st.columns([1, 5])
     with c1:
         if logo_img:
@@ -16,29 +24,51 @@ def render_main_panel(db_instance, config, logo_img=None):
 
     # --- Knowledge Ingestion Section ---
     with st.expander("📚 Feed Knowledge Base (Upload Data)", expanded=False):
+        
         tab_manual, tab_upload = st.tabs(["✍️ Manual Text", "📁 Upload File"])
         content_to_save = ""
         source_name = "manual"
         
         with tab_manual:
             manual_text = st.text_area("Paste text content here:", height=150)
+            
         with tab_upload:
             uploaded_file = st.file_uploader("Upload a document", type=["txt", "md"])
 
-        col_meta, col_btn = st.columns([3, 1])
-        with col_meta:
+        # --- LÓGICA DE SELECCIÓN UNIFICADA ---
+        st.write("---")
+        
+        def _update_text_from_pill():
+            if st.session_state.get("topic_pill_selection"):
+                st.session_state["topic_input_field"] = st.session_state["topic_pill_selection"]
+
+        col_input, col_btn = st.columns([4, 1])
+        
+        with col_input:
+            topic_tag = st.text_input(
+                "Topic / Tag", 
+                value="General", 
+                key="topic_input_field",
+                placeholder="Type new or select below..."
+            )
+            
             existing_topics = db_instance.get_topics()
-            options = ["➕ Create New Topic..."] + existing_topics
-            selected_option = st.selectbox("Select Topic / Tag", options)
-            if selected_option == "➕ Create New Topic...":
-                topic_tag = st.text_input("Enter new topic name", "General")
-            else:
-                topic_tag = selected_option
+            if existing_topics:
+                st.caption("Quick Select Existing:")
+                st.pills(
+                    "Existing Topics",
+                    options=existing_topics,
+                    label_visibility="collapsed",
+                    key="topic_pill_selection",
+                    on_change=_update_text_from_pill,
+                    selection_mode="single"
+                )
         
         with col_btn:
-            st.write("","", "")
-            save_btn = st.button("💾 Save to DB", use_container_width=True)
+            st.write("") 
+            save_btn = st.button("💾 Save", use_container_width=True)
 
+        # --- Saving Logic ---
         if save_btn:
             if uploaded_file:
                 try:
@@ -52,10 +82,15 @@ def render_main_panel(db_instance, config, logo_img=None):
 
             if content_to_save:
                 db_instance.add_document(content_to_save, topic_tag, source_name)
-                st.success(f"✅ Saved to **{topic_tag}**")
-                import time
-                time.sleep(1)
+                st.success(f"✅ Added to **{topic_tag}**")
+                
+                # --- AQUÍ ESTÁ EL CAMBIO CLAVE ---
+                # En lugar de limpiar directamente, activamos la bandera y recargamos
+                st.session_state["trigger_input_reset"] = True
+                time.sleep(0.5)
                 st.rerun()
+            else:
+                st.warning("⚠️ Provide text first.")
 
     st.divider()
 
@@ -63,7 +98,6 @@ def render_main_panel(db_instance, config, logo_img=None):
     st.subheader("Workspace")
     user_prompt = st.text_area("Enter your main instruction/prompt:", height=100)
 
-    # --- Advanced Prompt Configuration ---
     with st.expander("⚙️ Advanced Prompt Engineering", expanded=False):
         c1, c2 = st.columns(2)
         with c1:
@@ -76,16 +110,14 @@ def render_main_panel(db_instance, config, logo_img=None):
             active_constraints = st.multiselect("🚫 Negative Constraints", ["No preambles", "No apologies", "No passive voice", "No jargon"])
             negative_context = st.text_input("Specific Avoidance")
 
-    # --- Execution Logic ---
     if st.button("🚀 Execute Pipeline", type="primary"):
         if not config.get("pipeline_steps"):
-            st.error("Please configure the model pipeline in the sidebar first.")
+            st.error("Sidebar config required.")
             return
         if not user_prompt:
-            st.warning("Main prompt is required.")
+            st.warning("Main prompt required.")
             return
 
-        # Mega-Prompt Construction
         system_instruction = []
         if role: system_instruction.append(f"ROLE: Act as a {role}.")
         if audience: system_instruction.append(f"AUDIENCE: Adapt response for {audience}.")
@@ -96,7 +128,7 @@ def render_main_panel(db_instance, config, logo_img=None):
         
         all_constraints = active_constraints.copy()
         if negative_context: all_constraints.append(negative_context)
-        if all_constraints: system_instruction.append(f"CONSTRAINTS (AVOID): {', '.join(all_constraints)}.")
+        if all_constraints: system_instruction.append(f"CONSTRAINTS: {', '.join(all_constraints)}.")
 
         meta_prompt = "\n".join(system_instruction)
         temas_seleccionados = config.get("rag_topics", []) 
